@@ -115,12 +115,31 @@ func userInput() string {
 	return userInput
 }
 
+func newTags(ctx context.Context, client *ec2.Client, userInput, key, value string, withoutSnap []string) {
+	if strings.ToLower(userInput) == "y" {
+		if len(withoutSnap) == 0 {
+			log.Fatalf("Não há mais instâncias sem as tags [%v] | [%v]\n", key, value)
+			return
+		}
+		color.Yellow("#######################[Criando novas tags]#######################")
+		for _, j := range withoutSnap {
+			MustCreateTags(ctx, client, j, map[string]string{key: value})
+			name, _ := getInstanceNameByID(ctx, client, j)
+			fmt.Printf("Tag [%v] | [%v] criada para a instância %v ✅\n", key, value, green(name))
+		}
+	} else {
+		fmt.Println("Criação de tags cancelada")
+	}
+}
+
+var (
+	red   = color.New(color.FgRed).SprintFunc()
+	green = color.New(color.FgGreen).SprintFunc()
+	ctx   = context.Background()
+)
+
 func main() {
-	var (
-		red   = color.New(color.FgRed).SprintFunc()
-		green = color.New(color.FgGreen).SprintFunc()
-	)
-	ctx := context.Background()
+
 	profile, region, key, value := settingFlags()
 	cfg, _ := MustLoadConfig(profile, region)
 	client := ec2.NewFromConfig(cfg)
@@ -146,19 +165,5 @@ func main() {
 	}(withSnap, withoutSnap)
 
 	userInput := userInput()
-
-	if strings.ToLower(userInput) == "y" {
-		if len(withoutSnap) == 0 {
-			log.Fatalf("Não há mais instâncias sem as tags [%v] | [%v]\n", key, value)
-			return
-		}
-		color.Yellow("#######################[Criando novas tags]#######################")
-		for _, j := range withoutSnap {
-			MustCreateTags(ctx, client, j, map[string]string{key: value})
-			name, _ := getInstanceNameByID(ctx, client, j)
-			fmt.Printf("Tag [%v] | [%v] criada para a instância %v ✅\n", key, value, green(name))
-		}
-	} else {
-		fmt.Println("Criação de tags cancelada")
-	}
+	newTags(ctx, client, userInput, key, value, withoutSnap)
 }
