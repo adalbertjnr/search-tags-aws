@@ -14,7 +14,7 @@ import (
 
 func MustLoadConfig(p, r string) (aws.Config, error) {
 	cfg, err := config.LoadDefaultConfig(context.TODO(),
-		config.WithRegion("us-east-1"),
+		config.WithRegion(r),
 		config.WithSharedConfigProfile(p))
 	if err != nil {
 		return aws.Config{}, fmt.Errorf("Erro ao carregar SDK %v", err)
@@ -113,5 +113,4 @@ func main() {
 			fmt.Printf("Não possui Snapshot: -> %v\n", red(name))
 		}
 	}(withSnap, withoutSnap)
-
 }
