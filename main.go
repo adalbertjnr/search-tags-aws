@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"log"
 	"os"
 	"strings"
 
@@ -147,8 +148,10 @@ func main() {
 	userInput := userInput()
 
 	if strings.ToLower(userInput) == "y" {
-		v := make(map[string]string)
-		v[key] = value
+		if len(withoutSnap) == 0 {
+			log.Fatalf("Não há mais instâncias sem as tags [%v] | [%v]\n", key, value)
+			return
+		}
 		color.Yellow("#######################[Criando novas tags]#######################")
 		for _, j := range withoutSnap {
 			MustCreateTags(ctx, client, j, map[string]string{key: value})
