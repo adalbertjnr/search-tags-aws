@@ -4,6 +4,8 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"os"
+	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -76,6 +78,26 @@ func getInstanceNameByID(ctx context.Context, client *ec2.Client, instanceID str
 	return "", fmt.Errorf("instance name not found for ID: %s", instanceID)
 }
 
+func MustCreateTags(ctx context.Context, client *ec2.Client, instanceId string, tags map[string]string) {
+	tagList := make([]types.Tag, 0, len(tags))
+	for key, value := range tags {
+		tagList = append(tagList, types.Tag{
+			Key:   aws.String(key),
+			Value: aws.String(value),
+		})
+	}
+
+	_, err := client.CreateTags(ctx, &ec2.CreateTagsInput{
+		Resources: []string{instanceId},
+		Tags:      tagList,
+	})
+
+	if err != nil {
+		fmt.Printf("Erro ao criar as novas TAGS: %v\n", err)
+		os.Exit(1)
+	}
+}
+
 func settingFlags() (profileReturn, regionReturn, keyReturn, valueReturn string) {
 	profile := flag.String("profile", "default", "set the aws profile to run the commands")
 	region := flag.String("region", "us-east-1", "set the aws region to run the commands")
@@ -85,7 +107,18 @@ func settingFlags() (profileReturn, regionReturn, keyReturn, valueReturn string)
 	return *profile, *region, *key, *value
 }
 
+func userInput() string {
+	var userInput string
+	fmt.Println("Gostaria de criar as tags para as instâncias que não as possuem? Y/N")
+	fmt.Scan(&userInput)
+	return userInput
+}
+
 func main() {
+	var (
+		red   = color.New(color.FgRed).SprintFunc()
+		green = color.New(color.FgGreen).SprintFunc()
+	)
 	ctx := context.Background()
 	profile, region, key, value := settingFlags()
 	cfg, _ := MustLoadConfig(profile, region)
@@ -94,8 +127,7 @@ func main() {
 	withSnap, withoutSnap, _ := getInstancesWSnapshots(ctx, client, key, value)
 
 	func(v, k []string) {
-		red := color.New(color.FgRed).SprintFunc()
-		green := color.New(color.FgGreen).SprintFunc()
+
 		for i := 0; i < len(v); i++ {
 			name, err := getInstanceNameByID(ctx, client, v[i])
 			if err != nil {
@@ -111,4 +143,19 @@ func main() {
 			fmt.Printf("%v ❌\n", red(name))
 		}
 	}(withSnap, withoutSnap)
+
+	userInput := userInput()
+
+	if strings.ToLower(userInput) == "y" {
+		v := make(map[string]string)
+		v[key] = value
+		color.Yellow("#######################[Criando novas tags]#######################")
+		for _, j := range withoutSnap {
+			MustCreateTags(ctx, client, j, map[string]string{key: value})
+			name, _ := getInstanceNameByID(ctx, client, j)
+			fmt.Printf("Tag [%v] | [%v] criada para a instância %v ✅\n", key, value, green(name))
+		}
+	} else {
+		fmt.Println("Criação de tags cancelada")
+	}
 }
