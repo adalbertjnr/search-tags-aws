@@ -46,11 +46,9 @@ func checkingTags(instance types.Instance, key, value string) (string, bool) {
 	for _, tag := range instance.Tags {
 		if *tag.Key == key && *tag.Value == value {
 			return *instance.InstanceId, true
-		} else {
-			return *instance.InstanceId, false
 		}
 	}
-	return "", false
+	return *instance.InstanceId, false
 }
 
 func getInstanceNameByID(ctx context.Context, client *ec2.Client, instanceID string) (string, error) {
@@ -103,14 +101,14 @@ func main() {
 			if err != nil {
 				fmt.Printf("Erro: %v\n", err)
 			}
-			fmt.Printf("Possui Snapshot: -> %v\n", green(name))
+			fmt.Printf("%v ✅\n", green(name))
 		}
 		for i := 0; i < len(k); i++ {
 			name, err := getInstanceNameByID(ctx, client, k[i])
 			if err != nil {
 				fmt.Printf("Erro: %v\n", err)
 			}
-			fmt.Printf("Não possui Snapshot: -> %v\n", red(name))
+			fmt.Printf("%v ❌\n", red(name))
 		}
 	}(withSnap, withoutSnap)
 }
