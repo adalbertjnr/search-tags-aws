@@ -132,6 +132,27 @@ func newTags(ctx context.Context, client *ec2.Client, userInput, key, value stri
 	}
 }
 
+func MustCreateLogs(s string, t bool) {
+	var (
+		true_logs string
+		status    string
+	)
+
+	if t {
+		true_logs = "logs-com-tags.txt"
+		status = "TRUE"
+	} else {
+		true_logs = "logs-sem-tags.txt"
+		status = "FALSE"
+	}
+	file, err := os.OpenFile(true_logs, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	if err != nil {
+		fmt.Printf("Erro ao abrir criar logs: %v", err)
+		os.Exit(1)
+	}
+	file.WriteString(s + " -> " + status + "\n")
+}
+
 var (
 	red   = color.New(color.FgRed).SprintFunc()
 	green = color.New(color.FgGreen).SprintFunc()
@@ -154,6 +175,7 @@ func main() {
 				fmt.Printf("Erro: %v\n", err)
 			}
 			fmt.Printf("%v ✅\n", green(name))
+			MustCreateLogs(name, true)
 		}
 		for i := 0; i < len(k); i++ {
 			name, err := getInstanceNameByID(ctx, client, k[i])
@@ -161,6 +183,7 @@ func main() {
 				fmt.Printf("Erro: %v\n", err)
 			}
 			fmt.Printf("%v ❌\n", red(name))
+			MustCreateLogs(name, false)
 		}
 	}(withSnap, withoutSnap)
 
