@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -132,25 +133,24 @@ func newTags(ctx context.Context, client *ec2.Client, userInput, key, value stri
 	}
 }
 
-func MustCreateLogs(s string, t bool) {
-	var (
-		true_logs string
-		status    string
-	)
+func MustCreateLogs(s, p string, t bool) {
+	var logName string
 
 	if t {
-		true_logs = "logs-com-tags.txt"
-		status = "TRUE"
+		logName = p + " - logsWithTags.txt"
 	} else {
-		true_logs = "logs-sem-tags.txt"
-		status = "FALSE"
+		logName = p + " - logsWithoutTags.txt"
 	}
-	file, err := os.OpenFile(true_logs, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+
+	os.Mkdir(p, 0755)
+	folderPath := filepath.Join(p, logName)
+	file, err := os.OpenFile(folderPath, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
-		fmt.Printf("Erro ao abrir criar logs: %v", err)
+		fmt.Printf("Erro ao criar logs: %v", err)
 		os.Exit(1)
 	}
-	file.WriteString(s + " -> " + status + "\n")
+	file.WriteString(s + "\n")
+	defer file.Close()
 }
 
 var (
@@ -175,7 +175,7 @@ func main() {
 				fmt.Printf("Erro: %v\n", err)
 			}
 			fmt.Printf("%v ✅\n", green(name))
-			MustCreateLogs(name, true)
+			MustCreateLogs(name, profile, true)
 		}
 		for i := 0; i < len(k); i++ {
 			name, err := getInstanceNameByID(ctx, client, k[i])
@@ -183,7 +183,7 @@ func main() {
 				fmt.Printf("Erro: %v\n", err)
 			}
 			fmt.Printf("%v ❌\n", red(name))
-			MustCreateLogs(name, false)
+			MustCreateLogs(name, profile, false)
 		}
 	}(withSnap, withoutSnap)
 
